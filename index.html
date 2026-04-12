@@ -2,37 +2,62 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#DC2626">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="description" content="Aplikasi Manajemen Stok Kotak P3K dengan fitur expiry tracking dan offline support">
+    <meta name="apple-mobile-web-app-title" content="P3K Stock">
     
     <title>P3K Stock Manager</title>
     
-    <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
-    
-    <!-- Apple Touch Icons -->
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192x192.png">
     
-    <!-- Preload Critical Resources -->
     <link rel="preload" href="css/style.css" as="style">
     <link rel="preload" href="js/app.js" as="script">
     
-    <!-- Styles -->
     <link rel="stylesheet" href="css/style.css">
-    
-    <!-- Splash Screen for iOS -->
-    <link rel="apple-touch-startup-image" href="icons/icon-512x512.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)">
+
+    <style>
+        /* Perbaikan CSS inline kritis untuk Mobile UX */
+        :root {
+            /* Menangani area notch/poni pada smartphone modern */
+            --safe-area-top: env(safe-area-inset-top);
+            --safe-area-bottom: env(safe-area-inset-bottom);
+        }
+
+        body {
+            /* Mencegah scroll memantul (overscroll) yang mengganggu di iOS */
+            overscroll-behavior-y: none;
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: calc(60px + var(--safe-area-bottom)); /* Ruang untuk bottom nav */
+        }
+
+        .app-header {
+            padding-top: var(--safe-area-top);
+        }
+
+        /* Memastikan input tidak melakukan zoom otomatis di iOS (font size min 16px) */
+        input, select, textarea {
+            font-size: 16px !important;
+        }
+
+        /* Perbaikan posisi Bottom Nav agar tidak tertutup home indicator iPhone */
+        .bottom-nav {
+            padding-bottom: var(--safe-area-bottom);
+            height: calc(60px + var(--safe-area-bottom));
+        }
+
+        /* Menghilangkan delay klik pada tombol mobile */
+        button, .nav-item, .chip {
+            touch-action: manipulation;
+        }
+    </style>
 </head>
 <body>
-    <!-- Skip to content for accessibility -->
     <a href="#main-content" class="skip-link">Skip to content</a>
 
-    <!-- Loading Screen -->
     <div id="loading-screen" class="loading-screen">
         <div class="loading-content">
             <div class="loading-logo">🚑</div>
@@ -41,12 +66,11 @@
         </div>
     </div>
 
-    <!-- App Header -->
     <header class="app-header" role="banner">
         <div class="header-container">
             <div class="header-top">
                 <div class="brand">
-                    <div class="brand-icon" aria-hidden="true">🚑</div>
+                    <div class="brand-icon">🚑</div>
                     <div class="brand-text">
                         <h1 class="brand-title">P3K Stock</h1>
                         <span class="brand-subtitle">Manager</span>
@@ -54,264 +78,109 @@
                 </div>
                 
                 <div class="header-actions">
-                    <button id="sync-btn" class="icon-btn sync-btn" aria-label="Sinkronisasi data">
+                    <button id="sync-btn" class="icon-btn sync-btn" aria-label="Sinkronisasi">
                         <span class="sync-icon">🔄</span>
-                        <span class="sync-badge" id="sync-badge" aria-hidden="true"></span>
                     </button>
-                    <button id="menu-btn" class="icon-btn menu-btn" aria-label="Menu" aria-expanded="false">
+                    <button id="menu-btn" class="icon-btn menu-btn" aria-label="Menu">
                         <span class="menu-icon">☰</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Connection Status -->
-            <div class="connection-status" id="connection-status" role="status" aria-live="polite">
-                <span class="status-icon" aria-hidden="true">●</span>
+            <div class="connection-status" id="connection-status">
+                <span class="status-icon">●</span>
                 <span class="status-text">Online</span>
             </div>
 
-            <!-- Stats Cards -->
-            <div class="stats-grid" role="region" aria-label="Statistik stok">
+            <div class="stats-grid">
                 <div class="stat-card">
-                    <span class="stat-value" id="stat-total" aria-live="polite">0</span>
-                    <span class="stat-label">Total Item</span>
+                    <span class="stat-value" id="stat-total">0</span>
+                    <span class="stat-label">Total</span>
                 </div>
                 <div class="stat-card stat-warning">
-                    <span class="stat-value" id="stat-expiring" aria-live="polite">0</span>
-                    <span class="stat-label">Akan Expired</span>
+                    <span class="stat-value" id="stat-expiring">0</span>
+                    <span class="stat-label">Akan Exp</span>
                 </div>
                 <div class="stat-card stat-danger">
-                    <span class="stat-value" id="stat-expired" aria-live="polite">0</span>
+                    <span class="stat-value" id="stat-expired">0</span>
                     <span class="stat-label">Expired</span>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main id="main-content" class="main-content" role="main">
-        
-        <!-- Alert Container -->
-        <div id="alert-container" class="alert-container" role="alert" aria-live="assertive"></div>
+    <main id="main-content" class="main-content">
+        <div id="alert-container" class="alert-container"></div>
 
-        <!-- Search & Filter -->
-        <section class="search-section" aria-label="Pencarian dan filter">
+        <section class="search-section">
             <div class="search-box">
-                <span class="search-icon" aria-hidden="true">🔍</span>
+                <span class="search-icon">🔍</span>
                 <input 
                     type="search" 
                     id="search-input" 
-                    class="search-input" 
                     placeholder="Cari item P3K..." 
-                    aria-label="Cari item"
-                    autocomplete="off">
-            </div>
+                    enterkeyhint="search"> </div>
             
-            <div class="filter-chips" id="filter-chips" role="group" aria-label="Filter kategori">
-                <button class="chip active" data-category="all" aria-pressed="true">Semua</button>
-                <button class="chip" data-category="Obat" aria-pressed="false">Obat</button>
-                <button class="chip" data-category="Perban" aria-pressed="false">Perban</button>
-                <button class="chip" data-category="Alat" aria-pressed="false">Alat</button>
-                <button class="chip" data-category="Antiseptik" aria-pressed="false">Antiseptik</button>
+            <div class="filter-wrapper">
+                <div class="filter-chips" id="filter-chips">
+                    <button class="chip active" data-category="all">Semua</button>
+                    <button class="chip" data-category="Obat">Obat</button>
+                    <button class="chip" data-category="Perban">Perban</button>
+                    <button class="chip" data-category="Alat">Alat</button>
+                    <button class="chip" data-category="Antiseptik">Antiseptik</button>
+                </div>
             </div>
         </section>
 
-        <!-- Inventory List -->
-        <section class="inventory-section" aria-label="Daftar stok P3K">
-            <div class="section-header">
-                <h2 class="section-title">Daftar Stok</h2>
-                <button id="add-btn" class="fab" aria-label="Tambah item baru">
-                    <span class="fab-icon" aria-hidden="true">+</span>
-                </button>
-            </div>
-
-            <div id="inventory-list" class="inventory-list" role="list">
-                <!-- Items rendered by JS -->
-            </div>
+        <section class="inventory-section">
+            <div id="inventory-list" class="inventory-list">
+                </div>
 
             <div id="empty-state" class="empty-state" hidden>
-                <div class="empty-icon" aria-hidden="true">📦</div>
-                <h3 class="empty-title">Stok Kosong</h3>
-                <p class="empty-text">Belum ada item P3K. Tambahkan item pertama Anda.</p>
-                <button class="btn btn-primary empty-action" onclick="app.openModal()">
-                    Tambah Item
-                </button>
+                <div class="empty-icon">📦</div>
+                <h3>Stok Kosong</h3>
+                <button class="btn btn-primary" onclick="app.openModal()">Tambah Item</button>
             </div>
         </section>
 
-        <!-- Quick Actions -->
-        <section class="quick-actions" aria-label="Aksi cepat">
-            <h2 class="section-title">Aksi Cepat</h2>
-            <div class="action-grid">
-                <button class="action-card" onclick="app.showExpiring()">
-                    <span class="action-icon" aria-hidden="true">⏰</span>
-                    <span class="action-label">Cek Expired</span>
-                </button>
-                <button class="action-card" onclick="app.exportData()">
-                    <span class="action-icon" aria-hidden="true">📥</span>
-                    <span class="action-label">Export Data</span>
-                </button>
-                <button class="action-card" onclick="app.showChecklist()">
-                    <span class="action-icon" aria-hidden="true">✓</span>
-                    <span class="action-label">Checklist</span>
-                </button>
-                <button class="action-card" onclick="app.showGuide()">
-                    <span class="action-icon" aria-hidden="true">📖</span>
-                    <span class="action-label">Panduan</span>
-                </button>
-            </div>
-        </section>
+        <button id="add-btn" class="fab" aria-label="Tambah">
+            <span class="fab-icon">+</span>
+        </button>
     </main>
 
-    <!-- Bottom Navigation -->
-    <nav class="bottom-nav" role="navigation" aria-label="Navigasi utama">
-        <button class="nav-item active" data-view="home" aria-current="page">
-            <span class="nav-icon" aria-hidden="true">🏠</span>
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-view="home">
+            <span class="nav-icon">🏠</span>
             <span class="nav-label">Beranda</span>
         </button>
         <button class="nav-item" data-view="stats">
-            <span class="nav-icon" aria-hidden="true">📊</span>
+            <span class="nav-icon">📊</span>
             <span class="nav-label">Statistik</span>
         </button>
         <button class="nav-item" data-view="history">
-            <span class="nav-icon" aria-hidden="true">📋</span>
+            <span class="nav-icon">📋</span>
             <span class="nav-label">Riwayat</span>
         </button>
         <button class="nav-item" data-view="settings">
-            <span class="nav-icon" aria-hidden="true">⚙️</span>
+            <span class="nav-icon">⚙️</span>
             <span class="nav-label">Pengaturan</span>
         </button>
     </nav>
 
-    <!-- Add/Edit Modal -->
-    <div id="item-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
-        <div class="modal-overlay" data-close-modal></div>
-        <div class="modal-content">
-            <header class="modal-header">
-                <h2 id="modal-title" class="modal-title">Tambah Item</h2>
-                <button class="modal-close" data-close-modal aria-label="Tutup">
-                    <span aria-hidden="true">✕</span>
-                </button>
-            </header>
-            
-            <form id="item-form" class="modal-body">
-                <input type="hidden" id="item-id">
-                
-                <div class="form-group">
-                    <label for="item-name" class="form-label">Nama Item *</label>
-                    <input 
-                        type="text" 
-                        id="item-name" 
-                        class="form-input" 
-                        required 
-                        maxlength="100"
-                        placeholder="Contoh: Plester Luka">
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="item-category" class="form-label">Kategori *</label>
-                        <select id="item-category" class="form-select" required>
-                            <option value="" disabled selected>Pilih kategori</option>
-                            <option value="Obat">💊 Obat-obatan</option>
-                            <option value="Perban">🩹 Perban & Plester</option>
-                            <option value="Alat">🔧 Alat Medis</option>
-                            <option value="Antiseptik">🧼 Antiseptik</option>
-                            <option value="Lainnya">📦 Lainnya</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="item-quantity" class="form-label">Jumlah *</label>
-                        <div class="quantity-input">
-                            <button type="button" class="qty-btn minus" aria-label="Kurangi">−</button>
-                            <input 
-                                type="number" 
-                                id="item-quantity" 
-                                class="form-input qty-field" 
-                                value="1" 
-                                min="0" 
-                                max="9999"
-                                required>
-                            <button type="button" class="qty-btn plus" aria-label="Tambah">+</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="item-expiry" class="form-label">Tanggal Kadaluarsa</label>
-                    <input 
-                        type="date" 
-                        id="item-expiry" 
-                        class="form-input">
-                    <small class="form-hint">Kosongkan jika tidak ada tanggal kadaluarsa</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="item-notes" class="form-label">Catatan</label>
-                    <textarea 
-                        id="item-notes" 
-                        class="form-input form-textarea" 
-                        rows="3"
-                        maxlength="500"
-                        placeholder="Catatan tambahan..."></textarea>
-                </div>
-
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" data-close-modal>Batal</button>
-                    <button type="submit" class="btn btn-primary">Simpan</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Delete Confirmation Modal -->
-    <div id="delete-modal" class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="delete-title" hidden>
-        <div class="modal-overlay" data-close-modal></div>
-        <div class="modal-content">
-            <div class="modal-body text-center">
-                <div class="modal-icon danger" aria-hidden="true">🗑️</div>
-                <h3 id="delete-title" class="modal-title">Hapus Item?</h3>
-                <p class="modal-text">Item yang dihapus tidak dapat dikembalikan.</p>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" data-close-modal>Batal</button>
-                    <button type="button" id="confirm-delete" class="btn btn-danger">Hapus</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast Notification -->
-    <div id="toast" class="toast" role="status" aria-live="polite" hidden>
-        <span class="toast-icon" aria-hidden="true"></span>
-        <span class="toast-message"></span>
-    </div>
-
-    <!-- Install Prompt -->
-    <div id="install-prompt" class="install-prompt" role="alert" hidden>
-        <div class="install-content">
-            <div class="install-icon" aria-hidden="true">🚑</div>
-            <div class="install-text">
-                <strong>Install P3K Stock</strong>
-                <span>Akses offline & notifikasi</span>
-            </div>
-            <button id="install-btn" class="btn btn-primary btn-sm">Install</button>
-            <button id="dismiss-install" class="btn btn-text" aria-label="Tutup">✕</button>
-        </div>
-    </div>
-
-    <!-- Scripts -->
     <script src="js/app.js" defer></script>
     
-    <!-- Register Service Worker -->
     <script>
+        // Registrasi SW & Lock Screen Orientation (Opsional)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('SW registered:', reg.scope))
-                    .catch(err => console.log('SW registration failed:', err));
+                navigator.serviceWorker.register('sw.js');
             });
         }
+
+        // Mencegah pull-to-refresh di Chrome Mobile jika sedang di dalam modal
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
     </script>
 </body>
 </html>
